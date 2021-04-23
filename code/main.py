@@ -37,11 +37,16 @@ def main(a_pose_name: str, idle_loop_name: str, b_pose_path: str = None, a_to_id
             print(f"no such file {b_pose}")
             exit(1)
 
-    command = ['Blender', '--background', '--python', settings.core_path, "--",
-               str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path,
-               str(a_to_idle_blend_length), str(idle_to_b_blend_length), str(a_pose_frame), str(b_pose_frame)]
-    # command = ['Blender', '--background', '--python', settings.core_path, "--",
-    #            str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path, b_pose_path]
+    if b_pose_path:
+        command = ['Blender', '--background', '--python', settings.core_path, "--",
+                   str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path,
+                   str(a_to_idle_blend_length), str(idle_to_b_blend_length), str(a_pose_frame), str(b_pose_frame),
+                   b_pose_path]
+    else:
+        command = ['Blender', '--background', '--python', settings.core_path, "--",
+                   str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path,
+                   str(a_to_idle_blend_length), str(idle_to_b_blend_length), str(a_pose_frame), str(b_pose_frame)]
+
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             cwd=os.path.dirname(os.path.realpath(__file__)))
     log_subprocess_output(result)
