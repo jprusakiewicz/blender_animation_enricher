@@ -15,7 +15,7 @@ def log_subprocess_output(subproces_result: subprocess.CompletedProcess, encodin
         print(str(line, encoding))  # feel free changing to logging.log()
 
 
-def main(a_pose_name: str, idle_loop_name: str, b_pose_path: str = None, a_to_idle_blend_length: int = 30,
+def main(a_pose_name: str, idle_loop_name: str, b_pose_name: str = None, a_to_idle_blend_length: int = 30,
          idle_to_b_blend_length: int = 30, a_pose_frame: int = 1, b_pose_frame: int = 1):
     # region files validation
     idle_loops_path = os.path.join(settings.source_fbx_directory_path, "idle_loops", idle_loop_name + ".fbx")
@@ -30,22 +30,22 @@ def main(a_pose_name: str, idle_loop_name: str, b_pose_path: str = None, a_to_id
         print(f"no such file {a_pose}")
         exit(1)
 
-    if b_pose_path:
-        b_poses_path = os.path.join(settings.source_fbx_directory_path, "b_poses", b_pose_path + ".fbx")
-        b_pose = Path(b_poses_path)
+    if b_pose_name:
+        b_pose_path = os.path.join(settings.source_fbx_directory_path, "b_poses", b_pose_name + ".fbx")
+        b_pose = Path(b_pose_path)
         if not b_pose.is_file():
             print(f"no such file {b_pose}")
             exit(1)
 
-    if b_pose_path:
+    if not b_pose_name:
+        command = ['Blender', '--background', '--python', settings.core_path, "--",
+                   str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path,
+                   str(a_to_idle_blend_length), str(idle_to_b_blend_length), str(a_pose_frame), str(b_pose_frame)]
+    else:
         command = ['Blender', '--background', '--python', settings.core_path, "--",
                    str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path,
                    str(a_to_idle_blend_length), str(idle_to_b_blend_length), str(a_pose_frame), str(b_pose_frame),
                    b_pose_path]
-    else:
-        command = ['Blender', '--background', '--python', settings.core_path, "--",
-                   str(settings.import_scale), settings.export_directory_path, a_pose_path, idle_loops_path,
-                   str(a_to_idle_blend_length), str(idle_to_b_blend_length), str(a_pose_frame), str(b_pose_frame)]
 
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             cwd=os.path.dirname(os.path.realpath(__file__)))
