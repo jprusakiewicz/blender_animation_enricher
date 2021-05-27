@@ -5,40 +5,27 @@ import sys
 import bpy
 
 
-def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose_path: str, idle_loop_fbx_path: str,
-                           a_to_idle_blend_length: str, idle_to_b_blend_length: str, a_pose_frame: str,
-                           b_pose_frame: str,
-                           b_pose_path=None):
+def add_to_snapped_animation(import_scale: str, export_directory_path: str, a_pose_path: str,
+                             a_to_idle_blend_length: str, idle_to_b_blend_length: str, a_pose_frame: str,
+                             b_pose_frame: str, animation_group_name=None, b_pose_path=None):
+    idle_loop = bpy.context.scene.collection.all_objects["root"]  # base object name
+
     # arguments bind
     import_scale = float(import_scale)
     a_to_idle_blend_length = int(a_to_idle_blend_length)
     idle_to_b_blend_length = int(idle_to_b_blend_length)
     a_pose_frame = int(a_pose_frame)
+    b_pose_frame = int(b_pose_frame)
 
     a_pose_file_name = os.path.basename(a_pose_path).strip(".fbx")
-    idle_loop_file_name = os.path.basename(idle_loop_fbx_path).strip(".fbx")
+    idle_loop_file_name = "snapped"
 
     if b_pose_path:
-        b_pose_frame = int(b_pose_frame)
         b_pose_file_name = "_" + os.path.basename(b_pose_path).strip(".fbx")
     else:
         b_pose_file_name = ""
 
     export_name = a_pose_file_name + "_" + idle_loop_file_name + b_pose_file_name
-
-    # import idle loop
-    bpy.ops.import_scene.fbx(filepath=idle_loop_fbx_path, global_scale=import_scale)
-
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    imported_objects = [o for o in bpy.context.selected_objects if o.type == 'ARMATURE']
-
-    if len(imported_objects) > 1:
-        logging.error("imported more than one armature!")
-        exit()
-
-    idle_loop = imported_objects[0]
-    bpy.ops.object.select_all(action='DESELECT')
 
     # import a_pose
     bpy.ops.import_scene.fbx(filepath=a_pose_path)
@@ -79,8 +66,8 @@ def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose
     idle_fcurves = idle_loop.animation_data.action.fcurves
     a_pose_fcurves = a_pose.animation_data.action.fcurves
 
-    for f in reversed(idle_fcurves):
-        for k in f.keyframe_points:
+    for c in reversed(idle_loop.animation_data.action.groups[animation_group_name].channels):
+        for k in c.keyframe_points:
             k.co[0] += animation_frame_delta
             k.handle_left[0] += animation_frame_delta
             k.handle_right[0] += animation_frame_delta
@@ -134,4 +121,4 @@ if __name__ == "__main__":
         bpy.ops.wm.quit_blender()
         exit(1)
 
-    add_poses_to_animation(*argv)
+    add_to_snapped_animation(*argv)
