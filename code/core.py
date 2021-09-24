@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -5,29 +6,27 @@ import sys
 import bpy
 
 
-def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose_path: str, idle_loop_fbx_path: str,
-                           a_to_idle_blend_length: str, idle_to_b_blend_length: str, a_pose_frame: str,
-                           b_pose_frame: str,
-                           b_pose_path=None):
+def add_poses_to_animation(configuration_json: str):
+    configuration = json.loads(configuration_json)
     # arguments bind
-    import_scale = float(import_scale)
-    a_to_idle_blend_length = int(a_to_idle_blend_length)
-    idle_to_b_blend_length = int(idle_to_b_blend_length)
-    a_pose_frame = int(a_pose_frame)
+    import_scale = float(configuration["import_scale"])
+    a_to_idle_blend_length = int(configuration["a_to_idle_blend_length"])
+    idle_to_b_blend_length = int(configuration["idle_to_b_blend_length"])
+    a_pose_frame = int(configuration["a_pose_frame"])
 
-    a_pose_file_name = os.path.basename(a_pose_path).strip(".fbx")
-    idle_loop_file_name = os.path.basename(idle_loop_fbx_path).strip(".fbx")
+    a_pose_file_name = os.path.basename(configuration["a_pose_path"]).strip(".fbx")
+    idle_loop_file_name = os.path.basename(configuration["idle_loop_fbx_path"]).strip(".fbx")
 
-    if b_pose_path:
-        b_pose_frame = int(b_pose_frame)
-        b_pose_file_name = "_" + os.path.basename(b_pose_path).strip(".fbx")
-    else:
+    try:
+        b_pose_frame = int(configuration["b_pose_frame"])
+        b_pose_file_name = "_" + os.path.basename(configuration["b_pose_path"]).strip(".fbx")
+    except KeyError:
         b_pose_file_name = ""
 
     export_name = a_pose_file_name + "_" + idle_loop_file_name + b_pose_file_name
 
     # import idle loop
-    bpy.ops.import_scene.fbx(filepath=idle_loop_fbx_path, global_scale=import_scale)
+    bpy.ops.import_scene.fbx(filepath=configuration["idle_loop_fbx_path"], global_scale=import_scale)
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -41,7 +40,7 @@ def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose
     bpy.ops.object.select_all(action='DESELECT')
 
     # import a_pose
-    bpy.ops.import_scene.fbx(filepath=a_pose_path)
+    bpy.ops.import_scene.fbx(filepath=configuration["a_pose_path"])
 
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -55,8 +54,8 @@ def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose
     bpy.ops.object.select_all(action='DESELECT')
 
     # try import b_pose
-    if b_pose_path:
-        bpy.ops.import_scene.fbx(filepath=b_pose_path, global_scale=import_scale)
+    try:
+        bpy.ops.import_scene.fbx(filepath=configuration["b_pose_path"], global_scale=import_scale)
         bpy.ops.object.mode_set(mode='OBJECT')
 
         imported_objects = [o for o in bpy.context.selected_objects if o.type == 'ARMATURE']
@@ -68,7 +67,7 @@ def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose
         b_pose = imported_objects[0]
         b_pose_fcurves = b_pose.animation_data.action.fcurves
 
-    else:
+    except KeyError:
         b_pose_fcurves = a_pose.animation_data.action.fcurves
         b_pose_frame = a_pose_frame
 
@@ -97,7 +96,7 @@ def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose
     last_frame = last_idle_loop_frame + idle_to_b_blend_length
 
     # copy/paste b_pose to idle loop
-    b_pose_frame_delta = b_pose_frame + first_idle_loop_frame
+    b_pose_frame_delta = b_pose_frame + first_idle_loop_frame  # noqa
     try:
         for idle_fc, b_pose_fc in zip(idle_fcurves, b_pose_fcurves):
             idle_fc.keyframe_points.insert(last_frame, b_pose_fc.keyframe_points[b_pose_frame_delta].co.y)
@@ -117,7 +116,7 @@ def add_poses_to_animation(import_scale: str, export_directory_path: str, a_pose
 
     idle_loop.select_set(True)
 
-    full_export_path = os.path.join(export_directory_path, export_name + ".fbx")
+    full_export_path = os.path.join(configuration["export_directory_path"], export_name + ".fbx")
     bpy.ops.export_scene.fbx(filepath=full_export_path, use_selection=True, apply_scale_options="FBX_SCALE_UNITS",
                              object_types={'ARMATURE', 'MESH'}, apply_unit_scale=True, use_mesh_modifiers=True,
                              add_leaf_bones=False, use_armature_deform_only=True,
@@ -129,9 +128,9 @@ if __name__ == "__main__":
     argv = sys.argv
     argv = argv[argv.index("--") + 1:]  # get all args after "--"
     print(len(argv))
-    if len(argv) < 8 or len(argv) > 9:
+    if len(argv) != 1:
         logging.critical("wrong parameters count")
         bpy.ops.wm.quit_blender()
         exit(1)
 
-    add_poses_to_animation(*argv)
+    add_poses_to_animation(argv[0])
