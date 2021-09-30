@@ -14,6 +14,9 @@ def add_poses_to_animation(configuration_json: str):
     idle_to_b_blend_length = int(configuration["idle_to_b_blend_length"])
     a_pose_frame = int(configuration["a_pose_frame"])
 
+    a_range = configuration["a_pose_range"]
+    b_range = configuration["b_pose_range"]
+
     a_pose_file_name = os.path.basename(configuration["a_pose_path"]).strip(".fbx")
     idle_loop_file_name = os.path.basename(configuration["idle_loop_fbx_path"]).strip(".fbx")
 
@@ -21,6 +24,7 @@ def add_poses_to_animation(configuration_json: str):
         b_pose_frame = int(configuration["b_pose_frame"])
         b_pose_file_name = "_" + os.path.basename(configuration["b_pose_path"]).strip(".fbx")
     except KeyError:
+        print("no b pose filename")
         b_pose_file_name = ""
 
     export_name = a_pose_file_name + "_" + idle_loop_file_name + b_pose_file_name
@@ -68,11 +72,17 @@ def add_poses_to_animation(configuration_json: str):
         b_pose_fcurves = b_pose.animation_data.action.fcurves
 
     except KeyError:
+        print("KeyError: no b pose filename")
         b_pose_fcurves = a_pose.animation_data.action.fcurves
         b_pose_frame = a_pose_frame
 
     first_idle_loop_frame = int(idle_loop.animation_data.action.frame_range[0])
-    animation_frame_delta = a_to_idle_blend_length - first_idle_loop_frame
+
+    if a_range:
+        delta_a_range = a_range - a_pose_frame
+        animation_frame_delta = a_to_idle_blend_length - first_idle_loop_frame + delta_a_range
+    else:
+        animation_frame_delta = a_to_idle_blend_length - first_idle_loop_frame
 
     # fcurves
     idle_fcurves = idle_loop.animation_data.action.fcurves
@@ -85,24 +95,45 @@ def add_poses_to_animation(configuration_json: str):
             k.handle_right[0] += animation_frame_delta
 
     # copy/paste a_pose to idle loop
-    try:
-        for idle_fc, a_pose_fc in zip(idle_fcurves, a_pose_fcurves):
-            idle_fc.keyframe_points.insert(0, a_pose_fc.keyframe_points[a_pose_frame].co.y)
-    except IndexError:
-        print(f"given a pose frame out of range! frame: {a_pose_frame}")
-        exit(1)
+    if a_range:
+        for idx in range(0, delta_a_range):
+            try:
+                for idle_fc, a_pose_fc in zip(idle_fcurves, a_pose_fcurves):
+                    idle_fc.keyframe_points.insert(0 + idx, a_pose_fc.keyframe_points[a_pose_frame + idx].co.y)
+            except IndexError:
+                print(f"given a pose frame out of range! frame: {a_pose_frame}")
+                exit(1)
+    else:
+        try:
+            for idle_fc, a_pose_fc in zip(idle_fcurves, a_pose_fcurves):
+                idle_fc.keyframe_points.insert(0, a_pose_fc.keyframe_points[a_pose_frame].co.y)
+        except IndexError:
+            print(f"given a pose frame out of range! frame: {a_pose_frame}")
+            exit(1)
 
     last_idle_loop_frame = idle_loop.animation_data.action.frame_range[1]
     last_frame = last_idle_loop_frame + idle_to_b_blend_length
 
     # copy/paste b_pose to idle loop
     b_pose_frame_delta = b_pose_frame + first_idle_loop_frame  # noqa
-    try:
-        for idle_fc, b_pose_fc in zip(idle_fcurves, b_pose_fcurves):
-            idle_fc.keyframe_points.insert(last_frame, b_pose_fc.keyframe_points[b_pose_frame_delta].co.y)
-    except IndexError:
-        print(f"given b_pose frame out of range! frame: {b_pose_frame_delta}")
-        exit(1)
+
+    if b_range:
+        delta_b_range = b_range - b_pose_frame
+        for idx in range(0, delta_b_range):
+            try:
+                for idle_fc, b_pose_fc in zip(idle_fcurves, b_pose_fcurves):
+                    idle_fc.keyframe_points.insert(last_frame + idx,
+                                                   b_pose_fc.keyframe_points[b_pose_frame_delta + idx].co.y)
+            except IndexError:
+                print(f"given b_pose frame out of range! frame: {b_pose_frame_delta}")
+                exit(1)
+    else:
+        try:
+            for idle_fc, b_pose_fc in zip(idle_fcurves, b_pose_fcurves):
+                idle_fc.keyframe_points.insert(last_frame, b_pose_fc.keyframe_points[b_pose_frame_delta].co.y)
+        except IndexError:
+            print(f"given b_pose frame out of range! frame: {b_pose_frame_delta}")
+            exit(1)
 
     # key interpolation mode -> bezier
     for f in idle_fcurves:
