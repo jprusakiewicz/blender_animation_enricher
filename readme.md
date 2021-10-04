@@ -22,6 +22,8 @@ to check all arguments type `python main.py --help` in console
 * idle_to_b_blend_length **(int)** (frame) length of blend between (main) idle_loop (third) b_pose animations (default: 30)
 * a_pose_frame **(int)** frame to choose pose from a_pose animation (default: 1)
 * b_pose_frame **(int)** frame to choose pose from b_pose animation (default: 1)
+* a_pose_end_frame **(int)** when this parameter is specified whole range of **a** animation is used instead of one-frame-pose (default: None)
+* b_pose_end_frame **(int)** when this parameter is specified whole range of **b** animation is used instead of one-frame-pose (default: None)
 * --snapped / no_snapped read idle_animation from .blend file (may be used i.e. for snapping bones in blend project) (default: False)
 
 ## user configuration 
